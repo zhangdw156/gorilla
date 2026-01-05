@@ -68,6 +68,7 @@ from bfcl_eval.model_handler.local_inference.salesforce_qwen import (
     SalesforceQwenHandler,
 )
 from bfcl_eval.model_handler.local_inference.think_agent import ThinkAgentHandler
+from bfcl_eval.model_handler.local_inference.looptool_handler import LoopToolHandler
 
 # -----------------------------------------------------------------------------
 # A mapping of model identifiers to their respective model configurations.
@@ -1885,6 +1886,30 @@ local_inference_model_map = {
         is_fc_model=False,
         underscore_to_dot=False,
     ),
+    "Qwen3-8B": ModelConfig(
+        model_name="Qwen/Qwen3-8B-FC",
+        display_name="Qwen3-8B (FC)",
+        url="https://huggingface.co/Qwen/Qwen3-8B",
+        org="Qwen",
+        license="apache-2.0",
+        model_handler=QwenFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "Qwen3-8B-LoopTool": ModelConfig(
+        model_name="Qwen3-8B-LoopTool",
+        display_name="Qwen3-8B-LoopTool (FC)",
+        url="Qwen3-8B-LoopTool",
+        org="Qwen",
+        license="apache-2.0",
+        model_handler=LoopToolHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    )
 }
 
 # Inference through third-party inference platforms for open-source models
