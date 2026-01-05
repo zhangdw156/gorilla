@@ -16,9 +16,10 @@ from bfcl_eval.model_handler.utils import (
     func_doc_language_specific_pre_processing,
     system_prompt_pre_processing_chat_model,
 )
-from openai import OpenAI
+from openai import OpenAI, APITimeoutError
 from overrides import EnforceOverrides, final, override
 from tqdm import tqdm
+import httpx
 
 
 class OSSHandler(BaseHandler, EnforceOverrides):
@@ -33,11 +34,20 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         self.model_path_or_id = None
 
         # Read from env vars with fallbacks
-        self.vllm_host = os.getenv("VLLM_ENDPOINT", "localhost")
-        self.vllm_port = os.getenv("VLLM_PORT", VLLM_PORT)
-
-        self.base_url = f"http://{self.vllm_host}:{self.vllm_port}/v1"
-        self.client = OpenAI(base_url=self.base_url, api_key="EMPTY")
+        apikey = "EMPTY"
+        if os.getenv("VLLM_URL") is not None:
+            self.base_url = os.getenv("VLLM_URL")
+            self.client = OpenAI(
+                base_url=self.base_url, api_key=os.getenv("VLLM_APIKEY"), http_client=httpx.Client(verify=False)
+            )
+            apikey = os.getenv("VLLM_APIKEY")
+        else:
+            self.vllm_host = os.getenv("VLLM_ENDPOINT", "localhost")
+            self.vllm_port = os.getenv("VLLM_PORT", VLLM_PORT)
+            self.base_url = f"http://{self.vllm_host}:{self.vllm_port}/v1"
+            self.client = OpenAI(base_url=self.base_url, api_key=apikey)
+        print(f"Using VLLM URL: {self.base_url}")
+        print(f"Using VLLM APIKEY: {apikey}")
 
     @override
     def inference(self, test_entry: dict, include_input_log: bool, exclude_state_log: bool):
@@ -72,6 +82,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         exclude_state_log: bool,
         update_mode: bool,
         result_dir=RESULT_PATH,
+        local_tokenizer_path: Optional[str] = None,
     ):
         """
         Batch inference for OSS models.
@@ -96,6 +107,24 @@ class OSSHandler(BaseHandler, EnforceOverrides):
             self.model_path_or_id = local_model_path
             load_kwargs = {
                 "pretrained_model_name_or_path": self.model_path_or_id,
+                "local_files_only": True,
+                "trust_remote_code": True,
+            }
+        elif local_tokenizer_path is not None:
+            self.model_path_or_id = self.model_name_huggingface
+            if not os.path.isdir(local_tokenizer_path):
+                raise ValueError(
+                    f"local_tokenizer_path '{local_tokenizer_path}' does not exist or is not a directory."
+                )
+
+            required_files = ["config.json", "tokenizer_config.json"]
+            for file_name in required_files:
+                if not os.path.exists(os.path.join(local_tokenizer_path, file_name)):
+                    raise ValueError(
+                        f"Required file '{file_name}' not found in local_tokenizer_path '{local_tokenizer_path}'."
+                    )
+            load_kwargs = {
+                "pretrained_model_name_or_path": local_tokenizer_path,
                 "local_files_only": True,
                 "trust_remote_code": True,
             }
@@ -205,7 +234,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                     )
                 try:
                     # Make a simple request to check if the server is up
-                    response = requests.get(f"{self.base_url}/models")
+                    response = requests.get(f"{self.base_url}/models", verify=False)
                     if response.status_code == 200:
                         server_ready = True
                         print("server is ready!")
@@ -219,7 +248,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
 
             # Once the server is ready, make the completion requests
             futures = []
-            with ThreadPoolExecutor(max_workers=100) as executor:
+            with ThreadPoolExecutor(max_workers=20) as executor:
                 with tqdm(
                     total=len(test_entries),
                     desc=f"Generating results for {self.model_name}",
@@ -341,23 +370,41 @@ class OSSHandler(BaseHandler, EnforceOverrides):
             extra_body["skip_special_tokens"] = self.skip_special_tokens
 
         start_time = time.time()
-        if len(extra_body) > 0:
-            api_response = self.client.completions.create(
-                model=self.model_path_or_id,
-                temperature=self.temperature,
-                prompt=formatted_prompt,
-                max_tokens=leftover_tokens_count,
-                extra_body=extra_body,
-                timeout=72000,  # Avoid timeout errors
-            )
-        else:
-            api_response = self.client.completions.create(
-                model=self.model_path_or_id,
-                temperature=self.temperature,
-                prompt=formatted_prompt,
-                max_tokens=leftover_tokens_count,
-                timeout=72000,  # Avoid timeout errors
-            )
+        max_retries = 3
+        retry_count = 0
+        api_response = None
+
+        while retry_count < max_retries:
+            try:
+                if len(extra_body) > 0:
+                    api_response = self.client.completions.create(
+                        model=self.model_path_or_id,
+                        temperature=self.temperature,
+                        prompt=formatted_prompt,
+                        max_tokens=leftover_tokens_count,
+                        extra_body=extra_body,
+                        timeout=120,  # 120 seconds timeout
+                    )
+                else:
+                    api_response = self.client.completions.create(
+                        model=self.model_path_or_id,
+                        temperature=self.temperature,
+                        prompt=formatted_prompt,
+                        max_tokens=leftover_tokens_count,
+                        timeout=120,  # 120 seconds timeout
+                    )
+                break  # Success, exit retry loop
+            except (APITimeoutError, httpx.TimeoutException) as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    # Max retries reached, re-raise the exception
+                    raise e
+                print(f"Timeout error occurred. Retrying ({retry_count}/{max_retries})...")
+                time.sleep(retry_count)  # Brief delay before retry
+            except Exception as e:
+                # For other exceptions, don't retry, just raise
+                raise e
+
         end_time = time.time()
 
         return api_response, end_time - start_time
