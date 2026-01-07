@@ -68,7 +68,7 @@ from bfcl_eval.model_handler.local_inference.salesforce_qwen import (
     SalesforceQwenHandler,
 )
 from bfcl_eval.model_handler.local_inference.think_agent import ThinkAgentHandler
-from bfcl_eval.model_handler.local_inference.looptool_handler import LoopToolHandler
+from bfcl_eval.model_handler.local_inference.looptool_handler import Qwen3ToolHandler
 
 # -----------------------------------------------------------------------------
 # A mapping of model identifiers to their respective model configurations.
@@ -1904,7 +1904,7 @@ local_inference_model_map = {
         url="Qwen3-8B-LoopTool",
         org="Qwen",
         license="apache-2.0",
-        model_handler=LoopToolHandler,
+        model_handler=Qwen3ToolHandler,
         input_price=None,
         output_price=None,
         is_fc_model=True,

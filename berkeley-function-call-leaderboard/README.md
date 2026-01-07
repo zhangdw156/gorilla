@@ -237,6 +237,14 @@ VLLM_ENDPOINT=localhost
 VLLM_PORT=1053
 ```
 
+##### For External VLLM/SGLang Servers OSS Model with API Key and Local Tokenizer
+If you have a server in another machine with api-key. you can use this command to generate the responses.
+```bash
+bfcl generate --model MODEL_NAME --test-category TEST_CATEGORY  --skip-server-setup --local-tokenizer-path YOUR_LOCAL_TOKENIZER_PATH
+```
+`VLLM_URL` and `VLLM_APIKEY` should be set in the `.env` file.
+In this case, you should specify the local tokenizer path using the `--local-tokenizer-path` flag.
+
 #### (Alternate) Script Execution for Generation
 
 For those who prefer using script execution instead of the CLI, you can run the following command:
