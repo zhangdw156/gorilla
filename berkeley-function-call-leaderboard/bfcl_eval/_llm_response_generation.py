@@ -241,6 +241,7 @@ def generate_results(args, model_name, test_cases_total):
             exclude_state_log=args.exclude_state_log,
             result_dir=args.result_dir,
             update_mode=update_mode,
+            local_tokenizer_path=args.local_tokenizer_path,
         )
 
     else:
