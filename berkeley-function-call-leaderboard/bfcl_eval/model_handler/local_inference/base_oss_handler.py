@@ -20,11 +20,12 @@ from openai import OpenAI, APITimeoutError
 from overrides import EnforceOverrides, final, override
 from tqdm import tqdm
 import httpx
-
+from dotenv import load_dotenv
 
 class OSSHandler(BaseHandler, EnforceOverrides):
     def __init__(self, model_name, temperature, dtype="bfloat16") -> None:
         super().__init__(model_name, temperature)
+        load_dotenv("/dfs/data/work/gorilla/berkeley-function-call-leaderboard/bfcl_eval/.env")
         self.model_name_huggingface = model_name
         self.model_style = ModelStyle.OSSMODEL
         self.dtype = dtype
@@ -37,15 +38,12 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         apikey = "EMPTY"
         if os.getenv("VLLM_URL") is not None:
             self.base_url = os.getenv("VLLM_URL")
-            self.client = OpenAI(
-                base_url=self.base_url, api_key=os.getenv("VLLM_APIKEY"), http_client=httpx.Client(verify=False)
-            )
-            apikey = os.getenv("VLLM_APIKEY")
+            apikey = os.getenv("VLLM_APIKEY", "EMPTY")
         else:
             self.vllm_host = os.getenv("VLLM_ENDPOINT", "localhost")
             self.vllm_port = os.getenv("VLLM_PORT", VLLM_PORT)
             self.base_url = f"http://{self.vllm_host}:{self.vllm_port}/v1"
-            self.client = OpenAI(base_url=self.base_url, api_key=apikey)
+        self.client = OpenAI(base_url=self.base_url, api_key=apikey)
         print(f"Using VLLM URL: {self.base_url}")
         print(f"Using VLLM APIKEY: {apikey}")
 

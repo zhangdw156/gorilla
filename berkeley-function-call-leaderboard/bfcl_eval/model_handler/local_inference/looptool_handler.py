@@ -148,7 +148,7 @@ If none of the functions can be used, point it out. If the given question lacks 
                 if idx == len(messages) - 1 or next_role != "tool":
                     formatted_prompt += "<|im_end|>\n"
 
-        formatted_prompt += "<|im_start|>assistant\n"
+        formatted_prompt += "<|im_start|>assistant\n<think>\n\n</think>\n\n"
         return formatted_prompt
 
     @override
