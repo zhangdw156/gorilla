@@ -132,6 +132,11 @@ def generate(
         "--local-model-path",
         help="Specify the path to a local directory containing the model's config/tokenizer/weights for fully offline inference. Use this only if the model weights are stored in a location other than the default HF_HOME directory.",
     ),
+    local_tokenizer_path: Optional[str] = typer.Option(
+        None,
+        "--local-tokenizer-path",
+        help="Specify the path to a local directory containing the model's tokenizer for fully offline inference. 如果指定了local-model-path，该参数忽略",
+    ),
     result_dir: str = typer.Option(
         RESULT_PATH,
         "--result-dir",
@@ -165,6 +170,7 @@ def generate(
         backend=backend,
         skip_server_setup=skip_server_setup,
         local_model_path=local_model_path,
+        local_tokenizer_path=local_tokenizer_path,
         result_dir=result_dir,
         allow_overwrite=allow_overwrite,
         run_ids=run_ids,
