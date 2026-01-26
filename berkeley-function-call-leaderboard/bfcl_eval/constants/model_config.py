@@ -1647,6 +1647,18 @@ local_inference_model_map = {
         is_fc_model=False,
         underscore_to_dot=False,
     ),
+    "Qwen/Qwen3-4B-FC": ModelConfig(
+        model_name="Qwen/Qwen3-4B-FC",
+        display_name="Qwen3-4B (FC)",
+        url="https://huggingface.co/Qwen/Qwen3-4B",
+        org="Qwen",
+        license="apache-2.0",
+        model_handler=QwenFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
     "Qwen/Qwen3-4B-Instruct-2507-FC": ModelConfig(
         model_name="Qwen/Qwen3-4B-Instruct-2507",
         display_name="Qwen3-4B-Instruct-2507 (FC)",
