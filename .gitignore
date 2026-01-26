@@ -44,3 +44,4 @@ berkeley-function-call-leaderboard/**/*.lock
 
 # Ignore the wandb cache:
 **/wandb/
+.ipynb_checkpoints/
