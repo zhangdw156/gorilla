@@ -67,6 +67,7 @@ from bfcl_eval.model_handler.local_inference.salesforce_qwen import (
     SalesforceQwenHandler,
 )
 from bfcl_eval.model_handler.local_inference.think_agent import ThinkAgentHandler
+from bfcl_eval.model_handler.dev_inference.sloop import SloopQwenHandler
 
 # -----------------------------------------------------------------------------
 # A mapping of model identifiers to their respective model configurations.
@@ -113,6 +114,20 @@ class ModelConfig:
     # True if this model does not allow '.' in function names
     underscore_to_dot: bool = False
 
+dev_party_inference_model_map={
+    "sloop-4b": ModelConfig(
+        model_name="sloop-4b",
+        display_name="Sloop-4B",
+        url="TODO: sloop-4b url",
+        org="Lenovo",
+        license="apache-2.0",
+        model_handler=SloopQwenHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=False,
+        underscore_to_dot=True,
+    ),
+}
 
 # Inference through API calls
 api_inference_model_map = {
@@ -2173,6 +2188,7 @@ MODEL_CONFIG_MAPPING = {
     **api_inference_model_map,
     **local_inference_model_map,
     **third_party_inference_model_map,
+    **dev_party_inference_model_map,
 }
 
 # Uncomment to get the supported_models.py file contents

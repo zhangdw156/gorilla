@@ -129,7 +129,7 @@ class CohereHandler(BaseHandler):
         self,
         messages: list,
         tools: list[cohere.types.ToolV2]
-    ) -> tuple[cohere.v2.types.V2ChatResponse, float]:
+    ) -> tuple[Any, float]:
         start_time = time.time()
         api_response = self.client.chat(
             model=self.model_name.replace("-FC", ""),
