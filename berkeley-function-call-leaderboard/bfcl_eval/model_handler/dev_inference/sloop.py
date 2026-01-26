@@ -1,11 +1,11 @@
 import json
+import ast
 import re
 from typing import Any
 from bfcl_eval.model_handler.local_inference.base_oss_handler import OSSHandler
 from bfcl_eval.model_handler.utils import convert_to_function_call
 from overrides import override
 
-# 系统提示词模板
 SYSTEM_PROMPT_TEMPLATE = """You are an expert in composing functions. You are given a question and a set of possible functions. Based on the question, you will need to make one or more function/tool calls to achieve the purpose.
 If none of the functions can be used, point it out. If the given question lacks the parameters required by the function, also point it out.
 You should only return the function calls in your response.
@@ -21,236 +21,286 @@ Here is a list of functions in JSON format that you can invoke.
 class SloopQwenHandler(OSSHandler):
     def __init__(self, model_name, temperature, registry_name, is_fc_model, **kwargs):
         super().__init__(model_name, temperature, registry_name, is_fc_model, **kwargs)
-        # 151645: <|im_end|>
-        # 151643: <|endoftext|>
-        self.stop_token_ids = [151645, 151643] 
 
     @override
-    def _format_prompt(self, messages, function):
+    def _pre_query_processing_prompting(self, test_entry: dict) -> dict:
+        functions: list = test_entry["function"]
+
+        # FC models use its own system prompt, so no need to add any message
+
+        return {"message": [], "function": functions}
+    
+    @staticmethod
+    def _extract_tool_calls(input_string):
         """
-        将 BFCL 的 messages 列表转换为 Sloop 微调格式 (Qwen ChatML) 的 Prompt 字符串。
-        关键特性：
-        1. 注入工具定义。
-        2. 处理思维链 (Thinking Process)。
-        3. 聚合 Tool Response 为 <tool_response>[...]</tool_response>。
+        从模型输出中提取函数调用并转换为 BFCL 要求的 list[dict] 格式。
+        支持格式：[func1(a=1), func2()]
         """
-        formatted_prompt = ""
-
-        # 1. 注入 System Prompt
-        tools_json = json.dumps(function, ensure_ascii=False)
-        system_content = SYSTEM_PROMPT_TEMPLATE.format(tool_definitions=tools_json)
-        formatted_prompt += f"<|im_start|>system\n{system_content}<|im_end|>\n"
-
-        i = 0
-        while i < len(messages):
-            msg = messages[i]
-            role = msg["role"]
-            content = msg.get("content", "")
-
-            if role == "system":
-                # 跳过，前面已经手动注入了
-                i += 1
-                continue
-
-            elif role == "user":
-                formatted_prompt += f"<|im_start|>user\n{content}<|im_end|>\n"
-                i += 1
-
-            elif role == "assistant":
-                # 处理思维链
-                reasoning_content = msg.get("reasoning_content", "")
-                
-                # 如果 content 为空但有 tool_calls，我们需要把 tool_calls 还原回模型输出格式
-                # BFCL 可能会把 assistant 的回复拆成 content 和 tool_calls 两个字段
-                # 你的模型输出格式是: [func1(), func2()]
-                
-                final_content = content
-                if "tool_calls" in msg and msg["tool_calls"]:
-                    # 这里我们需要把 BFCL 解析好的 tool_calls 逆向还原成字符串列表
-                    # msg['tool_calls'] 通常是 list[dict] 或者 list[str] (取决于之前的处理)
-                    # OSSHandler 的流程中，这里的 tool_calls 可能是被 decode_execute 处理过的 List[str]
-                    # 例如: ["releaseBrakePedal()", "gallon_to_liter(gallon=21.0)"]
-                    
-                    tool_calls_list = msg["tool_calls"]
-                    # 如果 tool_calls 是字典列表（Native FC 格式），需要转换（虽然你的模型是 Prompting 模式，不太可能走到这步，但防一手）
-                    if tool_calls_list and isinstance(tool_calls_list[0], dict):
-                         # 这里是个大坑，因为你的格式是 String，不是 JSON
-                         # 暂时假设在 Prompting 模式下，content 已经包含了 "[func(), func()]"
-                         # 如果 content 是空的，说明是 history 回填，我们需要重构它
-                         pass
-                
-                # 如果 content 本身就是空的（只有 tool_calls），我们需要依赖 tool_calls 重建 content
-                # 但在 Prompting 模式下，BFCL 通常会把完整的模型输出存入 content
-                # 如果 content 不为空，直接用 content
-                
-                if reasoning_content:
-                    formatted_prompt += f"<|im_start|>assistant\n<think>\n{reasoning_content}\n</think>\n\n{final_content}<|im_end|>\n"
-                else:
-                    # 如果内容里已经包含了 </think>，就不再额外包裹
-                    if "</think>" in final_content:
-                         formatted_prompt += f"<|im_start|>assistant\n{final_content}<|im_end|>\n"
-                    else:
-                         formatted_prompt += f"<|im_start|>assistant\n{final_content}<|im_end|>\n"
-                i += 1
-
-            elif role == "tool":
-                # --- 核心逻辑：聚合连续的 Tool 消息 ---
-                tool_results_list = []
-                
-                # 循环读取所有连续的 tool 消息
-                while i < len(messages) and messages[i]["role"] == "tool":
-                    curr_msg = messages[i]
-                    # name: "releaseBrakePedal()"
-                    # content: '{"brakePedalStatus": "released", ...}'
-                    func_call_sign = curr_msg.get("name", "unknown_tool()") 
-                    exec_result = curr_msg.get("content", "")
-
-                    # 构造字典项: { "func_call()": "result_json_str" }
-                    tool_results_list.append({func_call_sign: exec_result})
-                    i += 1
-                
-                # 序列化为 User 回复
-                # 使用 str() 生成单引号格式: [{'k': 'v'}]，匹配微调数据
-                tool_response_str = str(tool_results_list)
-                
-                formatted_prompt += f"<|im_start|>user\n<tool_response>\n{tool_response_str}\n</tool_response><|im_end|>\n"
-                
-            else:
-                # 兜底
-                i += 1
-
-        # 2. 引导 Assistant 生成
-        formatted_prompt += "<|im_start|>assistant\n"
+        if "</think>" in input_string:
+            input_string = input_string.split("</think>")[-1]
         
-        return formatted_prompt
+        input_string = input_string.strip()
 
-    @override
-    def decode_execute(self, result, has_tool_call_tag):
-        """
-        解析模型输出。
-        输入 result 示例: 
-        1. "[releaseBrakePedal(), gallon_to_liter(gallon=21.0)]<|im_end|>"
-        2. "<think>...</think>\n\n[func1()]"
-        """
-        # 1. 预处理：移除思维链和 Stop Token
-        raw_result = result
-        if "</think>" in raw_result:
-            raw_result = raw_result.split("</think>")[-1].strip()
+        # 2. 定位方括号边界
+        start_idx = input_string.find("[")
+        end_idx = input_string.rfind("]")
         
-        raw_result = raw_result.strip()
-        for stop_token in ["<|im_end|>", "<|endoftext|>"]:
-            if raw_result.endswith(stop_token):
-                raw_result = raw_result[:-len(stop_token)].strip()
-
-        # 2. 定位最外层的 []
-        start_idx = raw_result.find("[")
-        end_idx = raw_result.rfind("]")
-
         if start_idx == -1 or end_idx == -1:
-            # 如果没找到 []，可能模型在瞎聊，或者格式错了
-            # 对于 BFCL，返回空列表表示没有工具调用
             return []
 
-        # 提取括号内的内容: "func1(), func2()"
-        content = raw_result[start_idx+1 : end_idx].strip()
-        
-        if not content:
-            return []
+        list_str = input_string[start_idx : end_idx + 1]
 
-        # 3. 状态机分割 (State Machine Split)
-        # 必须处理参数中包含逗号的情况，例如: func(a=[1, 2])
-        calls = []
-        current_call = ""
-        bracket_depth = 0 # 圆括号深度
-        square_bracket_depth = 0 # 方括号深度 (处理列表参数)
-        curly_bracket_depth = 0 # 花括号深度 (处理字典参数)
-        
-        # 遍历字符
-        for char in content:
-            if char == ',' and bracket_depth == 0 and square_bracket_depth == 0 and curly_bracket_depth == 0:
-                # 只有在所有括号都在顶层时，逗号才是函数间的分隔符
-                if current_call.strip():
-                    calls.append(current_call.strip())
-                current_call = ""
-            else:
-                current_call += char
-                # 更新深度
-                if char == '(': bracket_depth += 1
-                elif char == ')': bracket_depth -= 1
-                elif char == '[': square_bracket_depth += 1
-                elif char == ']': square_bracket_depth -= 1
-                elif char == '{': curly_bracket_depth += 1
-                elif char == '}': curly_bracket_depth -= 1
-        
-        # 添加最后一个函数
-        if current_call.strip():
-            calls.append(current_call.strip())
+        try:
+            tree = ast.parse(list_str, mode='eval')
             
-        return calls
+            if not isinstance(tree.body, ast.List):
+                return []
 
-    @override
-    def decode_ast(self, result, language, has_tool_call_tag):
-        """
-        用于 AST 评测。
-        输入: "[func(a=1)]"
-        输出: [{"func": {"a": 1}}]
-        """
-        # 复用 decode_execute 拿到字符串列表 ["func(a=1)"]
-        decoded_strings = self.decode_execute(result, has_tool_call_tag)
-        
-        ast_list = []
-        for func_str in decoded_strings:
-            # convert_to_function_call 能把 "func(a=1)" 解析为 [{"name": "func", "args": {"a": 1}}]
-            # 注意它返回的是一个 list，通常包含一个 dict
-            parsed = convert_to_function_call(func_str)
-            if parsed:
-                # BFCL AST Checker 期望的是 [{"func_name": {"arg": val}}] 这种扁平结构
-                # 但 convert_to_function_call 返回的是标准结构 {"name":..., "args":...}
-                # 让我们检查一下 BFCL 默认的 default_decode_ast_prompting 实现...
-                # 实际上 OSSHandler 默认调用的 default_decode_ast_prompting 内部也是用了 convert_to_function_call
-                # 所以这里直接 extend 是安全的，只要格式对齐。
-                
-                # 修正：convert_to_function_call 返回的是 List[Dict]
-                # 每个 Dict 是 {"name": "func", "args": {..}}
-                # 这正是 BFCL AST 需要的通用格式
-                ast_list.extend(parsed)
-        
-        return ast_list
+            tool_calls = []
+            for elt in tree.body.elts:
+                if isinstance(elt, ast.Call):
+                    if isinstance(elt.func, ast.Name):
+                        func_name = elt.func.id
+                    elif isinstance(elt.func, ast.Attribute):
+                        func_name = ast.unparse(elt.func)
+                    else:
+                        continue
+
+                    arguments = {}
+
+                    for kw in elt.keywords:
+                        arguments[kw.arg] = ast.literal_eval(kw.value)
+
+                    tool_calls.append({
+                        "name": func_name,
+                        "arguments": arguments
+                    })
+            
+            return tool_calls
+
+        except Exception as e:
+            return []
 
     @override
     def _parse_query_response_prompting(self, api_response: Any) -> dict:
-        """
-        解析 API 响应，提取思维链和最终回复。
-        """
-        # OSSHandler 使用的是 completions 接口，choices[0].text
         model_response = api_response.choices[0].text
-        
+
         reasoning_content = ""
         cleaned_response = model_response
-        
-        # 分离 <think> 部分
         if "</think>" in model_response:
             parts = model_response.split("</think>")
-            # 提取前半部分，去掉 <think> 标签
-            if "<think>" in parts[0]:
-                reasoning_content = parts[0].split("<think>")[-1].strip()
-            else:
-                reasoning_content = parts[0].strip()
-            
-            # 后半部分是正文
-            cleaned_response = parts[-1].strip()
-        
-        # 构造用于 History 回填的消息对象
+            reasoning_content = parts[0].rstrip("\n").split("<think>")[-1].lstrip("\n")
+            cleaned_response = parts[-1].lstrip("\n")
+
         model_responses_message_for_chat_history = {
             "role": "assistant",
             "content": cleaned_response,
-            "reasoning_content": reasoning_content
         }
+            
+            
+        model_responses_message_for_chat_history["reasoning_content"] = reasoning_content
 
         return {
-            "model_responses": model_response, # 传给 decode_execute 的是原始完整字符串
+            "model_responses": cleaned_response,
             "reasoning_content": reasoning_content,
             "model_responses_message_for_chat_history": model_responses_message_for_chat_history,
             "input_token": api_response.usage.prompt_tokens,
             "output_token": api_response.usage.completion_tokens,
         }
+
+    @override
+    def _format_prompt(self, messages, function):
+        formatted_prompt = ""
+
+        # 1. 系统提示词注入
+        tools_json = json.dumps(function, ensure_ascii=False)
+        system_content = SYSTEM_PROMPT_TEMPLATE.format(tool_definitions=tools_json)
+        formatted_prompt += f"<|im_start|>system\n{system_content}<|im_end|>\n"
+
+        # 2. 找到最后一个真正的 User Query 索引 (非工具返回)
+        last_query_index = -1
+        for offset, message in enumerate(reversed(messages)):
+            idx = len(messages) - 1 - offset
+            if (
+                message["role"] == "user"
+                and isinstance(message["content"], str)
+                and not (
+                    message["content"].startswith("<tool_response>")
+                    and message["content"].endswith("</tool_response>")
+                )
+            ):
+                last_query_index = idx
+                break
+
+        # 3. 遍历渲染消息
+        skip_idx = -1
+        for idx, message in enumerate(messages):
+            if idx <= skip_idx:
+                continue
+                
+            role = message["role"]
+            content = message["content"]
+
+            if role == "user" or (role == "system" and idx != 0):
+                formatted_prompt += f"<|im_start|>{role}\n{content}<|im_end|>\n"
+
+            elif role == "assistant":
+                reasoning_content = ""
+                if "reasoning_content" in message and message["reasoning_content"]:
+                    reasoning_content = message["reasoning_content"]
+                elif "</think>" in content:
+                    parts = content.split("</think>")
+                    reasoning_content = parts[0].rstrip("\n").split("<think>")[-1].lstrip("\n")
+                    content = parts[-1].lstrip("\n")
+
+                formatted_prompt += f"<|im_start|>{role}\n"
+                
+                if idx > last_query_index:
+                    if idx == len(messages) - 1 or reasoning_content:
+                        formatted_prompt += (
+                            f"<|im_start|>{role}\n<think>\n"
+                            + reasoning_content.strip("\n")
+                            + f"\n</think>\n\n"
+                            + content.lstrip("\n")
+                        )
+                    else:
+                        formatted_prompt += f"<|im_start|>{role}\n{content}"
+                else:
+                    formatted_prompt += f"<|im_start|>{role}\n{content}"
+                
+                formatted_prompt += "<|im_end|>\n"
+
+            elif role == "tool":
+                tool_results_list = []
+                temp_ptr = idx
+                
+                while temp_ptr < len(messages) and messages[temp_ptr]["role"] == "tool":
+                    curr_msg = messages[temp_ptr]
+                    func_call_name = curr_msg.get("name", "unknown_tool()")
+                    exec_result = curr_msg.get("content", "")
+                    
+                    tool_results_list.append({func_call_name: exec_result})
+                    temp_ptr += 1
+                
+                skip_idx = temp_ptr - 1
+                
+                tool_response_str = str(tool_results_list)
+                
+                formatted_prompt += f"<|im_start|>user\n<tool_response>\n{tool_response_str}\n</tool_response><|im_end|>\n"
+
+        formatted_prompt += "<|im_start|>assistant\n"    
+        return formatted_prompt
+    
+    @override
+    def decode_ast(self, result, language, has_tool_call_tag):
+        tool_calls = self._extract_tool_calls(result)
+        if type(tool_calls) != list or any(type(item) != dict for item in tool_calls):
+            raise ValueError(f"Model did not return a list of function calls: {result}")
+        return [
+            {call["name"]: {k: v for k, v in call["arguments"].items()}}
+            for call in tool_calls
+        ]
+
+    @override
+    def decode_execute(self, result, has_tool_call_tag):
+        tool_calls = self._extract_tool_calls(result)
+        if type(tool_calls) != list or any(type(item) != dict for item in tool_calls):
+            raise ValueError(f"Model did not return a list of function calls: {result}")
+        decoded_result = []
+        for item in tool_calls:
+            if type(item) == str:
+                item = eval(item)
+            decoded_result.append({item["name"]: item["arguments"]})
+        return convert_to_function_call(decoded_result)
+
+if __name__ == "__main__":
+    # 初始化 Handler
+    # 注意：这里传入 Mock 参数，因为我们主要测试静态方法和重写的方法
+    handler = SloopQwenHandler(
+        model_name="test-model",
+        temperature=0.1,
+        registry_name="test-reg",
+        is_fc_model=True
+    )
+
+    print("=== 开始运行 SloopQwenHandler 单元测试 ===\n")
+
+    # --- 测试 1: _extract_tool_calls 解析功能 ---
+    print("测试 1: _extract_tool_calls")
+    test_cases_extract = [
+        {
+            "name": "标准单函数调用",
+            "input": "[get_weather(location='Shanghai', unit='celsius')]",
+            "expected": [{"name": "get_weather", "arguments": {"location": "Shanghai", "unit": "celsius"}}]
+        },
+        {
+            "name": "带思考过程的多函数调用",
+            "input": "<think>\n用户想知道天气和股价。\n</think>\n[get_weather(city='Beijing'), get_stock_price(symbol='AAPL')]",
+            "expected": [
+                {"name": "get_weather", "arguments": {"city": "Beijing"}},
+                {"name": "get_stock_price", "arguments": {"symbol": "AAPL"}}
+            ]
+        },
+        {
+            "name": "空调用或错误格式",
+            "input": "我无法完成这个任务。",
+            "expected": []
+        }
+    ]
+
+    for case in test_cases_extract:
+        res = handler._extract_tool_calls(case["input"])
+        status = "PASSED" if res == case["expected"] else "FAILED"
+        print(f"[{status}] {case['name']}")
+        if status == "FAILED":
+            print(f"  Expected: {case['expected']}\n  Got: {res}")
+
+    print("\n" + "-"*30 + "\n")
+
+    # --- 测试 2: _format_prompt 模板拼装 ---
+    print("测试 2: _format_prompt")
+    
+    test_functions = [{"name": "get_weather", "parameters": {"type": "object", "properties": {}}}]
+    test_messages = [
+        {"role": "user", "content": "今天上海天气怎么样？"},
+        {"role": "assistant", "content": "[get_weather(location='Shanghai')]", "reasoning_content": "分析：用户询问上海天气。"},
+        {"role": "tool", "name": "get_weather", "content": '{"temp": 25, "condition": "Sunny"}'},
+    ]
+
+    try:
+        formatted = handler._format_prompt(test_messages, test_functions)
+        
+        # 验证是否包含关键标志位
+        assertions = {
+            "包含 System Prompt": "<|im_start|>system" in formatted,
+            "包含工具定义": "tool_definitions" not in formatted and "get_weather" in formatted,
+            "包含思考过程": "<think>\n分析：用户询问上海天气。" in formatted,
+            "正确聚合 Tool 响应": "<tool_response>\n[{'get_weather': '{\"temp\": 25, \"condition\": \"Sunny\"}'}]\n</tool_response>" in formatted,
+            "以 Assistant 引导结尾": formatted.strip().endswith("<|im_start|>assistant")
+        }
+
+        for desc, success in assertions.items():
+            print(f"[{'PASSED' if success else 'FAILED'}] {desc}")
+        
+        # 打印部分结果供人工核对
+        # print("\n生成的 Prompt 片段预览:\n", formatted[-300:])
+
+    except Exception as e:
+        print(f"[FAILED] _format_prompt 运行出错: {str(e)}")
+
+    print("\n" + "-"*30 + "\n")
+
+    # --- 测试 3: decode_ast 接口 ---
+    print("测试 3: decode_ast")
+    raw_model_output = "[add(a=1, b=2)]"
+    try:
+        decoded = handler.decode_ast(raw_model_output, "python", False)
+        expected_decoded = [{"add": {"a": 1, "b": 2}}]
+        if decoded == expected_decoded:
+            print("[PASSED] decode_ast 转换成功")
+        else:
+            print(f"[FAILED] decode_ast 结果不符: {decoded}")
+    except Exception as e:
+        print(f"[FAILED] decode_ast 出错: {str(e)}")
+
+    print("\n=== 测试完成 ===")
