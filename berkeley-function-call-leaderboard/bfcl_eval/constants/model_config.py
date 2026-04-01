@@ -2131,8 +2131,8 @@ local_inference_model_map = {
         underscore_to_dot=False,
     ),
     "Astra/FC-NoPrefix": ModelConfig(
-        model_name="Qwen/Qwen3-4B",
-        display_name="Astra FC (no assistant prefix)",
+        model_name="Astra/FC-NoPrefix",
+        display_name="Astra FC (no prefix)",
         url="https://huggingface.co/Qwen/Qwen3-4B",
         org="Astra",
         license="apache-2.0",
@@ -2143,7 +2143,7 @@ local_inference_model_map = {
         underscore_to_dot=False,
     ),
     "Astra/FC-OpenThink": ModelConfig(
-        model_name="Qwen/Qwen3-4B",
+        model_name="Astra/FC-OpenThink",
         display_name="Astra FC (open think prefix)",
         url="https://huggingface.co/Qwen/Qwen3-4B",
         org="Astra",
@@ -2155,7 +2155,7 @@ local_inference_model_map = {
         underscore_to_dot=False,
     ),
     "Astra/FC-EmptyThinkBlock": ModelConfig(
-        model_name="Qwen/Qwen3-4B",
+        model_name="Astra/FC-EmptyThinkBlock",
         display_name="Astra FC (empty think block prefix)",
         url="https://huggingface.co/Qwen/Qwen3-4B",
         org="Astra",
