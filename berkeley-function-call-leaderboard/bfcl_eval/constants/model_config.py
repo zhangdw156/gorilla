@@ -57,6 +57,11 @@ from bfcl_eval.model_handler.local_inference.phi_fc import PhiFCHandler
 from bfcl_eval.model_handler.local_inference.quick_testing_oss import (
     QuickTestingOSSHandler,
 )
+from bfcl_eval.model_handler.dev_inference.astra_fc import (
+    AstraFCEmptyThinkBlockPrefixFCHandler,
+    AstraFCNoPrefixFCHandler,
+    AstraFCOpenThinkPrefixFCHandler,
+)
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
 from bfcl_eval.model_handler.local_inference.pelican_vl_fc import PelicanVLFCHandler
@@ -2120,6 +2125,42 @@ local_inference_model_map = {
         org="Nanbeige",
         license="apache-2.0",
         model_handler=NanbeigeFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "Astra/FC-NoPrefix": ModelConfig(
+        model_name="Qwen/Qwen3-4B",
+        display_name="Astra FC (no assistant prefix)",
+        url="https://huggingface.co/Qwen/Qwen3-4B",
+        org="Astra",
+        license="apache-2.0",
+        model_handler=AstraFCNoPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "Astra/FC-OpenThink": ModelConfig(
+        model_name="Qwen/Qwen3-4B",
+        display_name="Astra FC (open think prefix)",
+        url="https://huggingface.co/Qwen/Qwen3-4B",
+        org="Astra",
+        license="apache-2.0",
+        model_handler=AstraFCOpenThinkPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "Astra/FC-EmptyThinkBlock": ModelConfig(
+        model_name="Qwen/Qwen3-4B",
+        display_name="Astra FC (empty think block prefix)",
+        url="https://huggingface.co/Qwen/Qwen3-4B",
+        org="Astra",
+        license="apache-2.0",
+        model_handler=AstraFCEmptyThinkBlockPrefixFCHandler,
         input_price=None,
         output_price=None,
         is_fc_model=True,
