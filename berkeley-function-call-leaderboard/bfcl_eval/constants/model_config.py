@@ -59,8 +59,11 @@ from bfcl_eval.model_handler.local_inference.quick_testing_oss import (
 )
 from bfcl_eval.model_handler.dev_inference.astra_fc import (
     AstraFCEmptyThinkBlockPrefixFCHandler,
+    AstraFCEmptyThinkBlockPrefixNoSPFCHandler,
     AstraFCNoPrefixFCHandler,
+    AstraFCNoPrefixNoSPFCHandler,
     AstraFCOpenThinkPrefixFCHandler,
+    AstraFCOpenThinkPrefixNoSPFCHandler,
 )
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
@@ -2271,10 +2274,90 @@ third_party_inference_model_map = {
 }
 
 
+# Dev / experimental model handlers (not part of upstream BFCL)
+dev_inference_model_map = {
+    # --- With Astra system prompt ---
+    "astra-sp-noprefix": ModelConfig(
+        model_name="astra-sp-noprefix",
+        display_name="Astra SP NoPrefix (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCNoPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-sp-emptythink": ModelConfig(
+        model_name="astra-sp-emptythink",
+        display_name="Astra SP EmptyThink (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCEmptyThinkBlockPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-sp-openthink": ModelConfig(
+        model_name="astra-sp-openthink",
+        display_name="Astra SP OpenThink (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCOpenThinkPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- Without Astra system prompt (Qwen default) ---
+    "astra-nosp-noprefix": ModelConfig(
+        model_name="astra-nosp-noprefix",
+        display_name="Astra NoSP NoPrefix (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCNoPrefixNoSPFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-nosp-emptythink": ModelConfig(
+        model_name="astra-nosp-emptythink",
+        display_name="Astra NoSP EmptyThink (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCEmptyThinkBlockPrefixNoSPFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-nosp-openthink": ModelConfig(
+        model_name="astra-nosp-openthink",
+        display_name="Astra NoSP OpenThink (FC)",
+        url="",
+        org="Astra",
+        license="",
+        model_handler=AstraFCOpenThinkPrefixNoSPFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+}
+
+
 MODEL_CONFIG_MAPPING = {
     **api_inference_model_map,
     **local_inference_model_map,
     **third_party_inference_model_map,
+    **dev_inference_model_map,
 }
 
 # Uncomment to get the supported_models.py file contents

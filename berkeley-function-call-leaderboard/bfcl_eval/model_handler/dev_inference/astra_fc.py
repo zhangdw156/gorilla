@@ -197,3 +197,42 @@ class AstraFCEmptyThinkBlockPrefixFCHandler(AstraFCBase):
     """Prefix with empty ``think`` block (Qwen ``enable_thinking=false``-style)."""
 
     assistant_generation_suffix = _SUFFIX_EMPTY_THINK_BLOCK
+
+
+# ---------------------------------------------------------------------------
+# Variants WITHOUT Astra system prompt (fall back to QwenFCHandler default)
+# ---------------------------------------------------------------------------
+
+
+class AstraFCNoSPBase(QwenFCHandler):
+    """
+    Uses QwenFCHandler's default ``_format_prompt`` (no Astra system prompt override),
+    but still supports ``assistant_generation_suffix`` for think-prefix control.
+    """
+
+    assistant_generation_suffix: str = _SUFFIX_NONE
+
+    @override
+    def _format_prompt(self, messages, function):
+        formatted = super()._format_prompt(messages, function)
+        if self.assistant_generation_suffix:
+            formatted += self.assistant_generation_suffix
+        return formatted
+
+
+class AstraFCNoPrefixNoSPFCHandler(AstraFCNoSPBase):
+    """No Astra system prompt, no extra text after ``<|im_start|>assistant\\n``."""
+
+    assistant_generation_suffix = _SUFFIX_NONE
+
+
+class AstraFCOpenThinkPrefixNoSPFCHandler(AstraFCNoSPBase):
+    """No Astra system prompt, prefix with opening ``<think>`` line."""
+
+    assistant_generation_suffix = _SUFFIX_THINK_OPEN
+
+
+class AstraFCEmptyThinkBlockPrefixNoSPFCHandler(AstraFCNoSPBase):
+    """No Astra system prompt, prefix with empty ``think`` block."""
+
+    assistant_generation_suffix = _SUFFIX_EMPTY_THINK_BLOCK
