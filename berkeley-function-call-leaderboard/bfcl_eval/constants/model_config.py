@@ -2356,6 +2356,45 @@ dev_inference_model_map = {
         is_fc_model=True,
         underscore_to_dot=False,
     ),
+    # --- xLAM (Qwen base) ---
+    "xlam": ModelConfig(
+        model_name="xlam",
+        display_name="xLAM-2-3b-fc-r (FC)",
+        url="",
+        org="Salesforce",
+        license="",
+        model_handler=SalesforceQwenHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- xLAM (Llama base) ---
+    "xlam-llama": ModelConfig(
+        model_name="xlam-llama",
+        display_name="Llama-xLAM-2-8b-fc-r (FC)",
+        url="",
+        org="Salesforce",
+        license="",
+        model_handler=SalesforceLlamaHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- ToolACE ---
+    "toolace": ModelConfig(
+        model_name="toolace",
+        display_name="ToolACE-2.5-Llama-3.1-8B (Prompt)",
+        url="",
+        org="Huawei Noah & USTC",
+        license="",
+        model_handler=LlamaHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=False,
+        underscore_to_dot=False,
+    ),
 }
 
 
