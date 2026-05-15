@@ -67,6 +67,7 @@ from bfcl_eval.model_handler.dev_inference.astra_fc import (
 )
 from bfcl_eval.model_handler.dev_inference.envscaler_fc import EnvScalerFCHandler
 from bfcl_eval.model_handler.dev_inference.looptool_fc import LoopToolFCHandler
+from bfcl_eval.model_handler.dev_inference.toucan_fc import ToucanFCHandler
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
 from bfcl_eval.model_handler.local_inference.pelican_vl_fc import PelicanVLFCHandler
@@ -2337,6 +2338,19 @@ dev_inference_model_map = {
         org="EnvScaler",
         license="",
         model_handler=EnvScalerFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- Toucan ---
+    "toucan": ModelConfig(
+        model_name="toucan",
+        display_name="Toucan-Qwen2.5-7B (FC)",
+        url="",
+        org="Toucan",
+        license="",
+        model_handler=ToucanFCHandler,
         input_price=None,
         output_price=None,
         is_fc_model=True,
