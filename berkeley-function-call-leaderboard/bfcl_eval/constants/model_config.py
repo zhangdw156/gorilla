@@ -65,6 +65,7 @@ from bfcl_eval.model_handler.dev_inference.astra_fc import (
     AstraFCOpenThinkPrefixFCHandler,
     AstraFCOpenThinkPrefixNoSPFCHandler,
 )
+from bfcl_eval.model_handler.dev_inference.envscaler_fc import EnvScalerFCHandler
 from bfcl_eval.model_handler.dev_inference.looptool_fc import LoopToolFCHandler
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
@@ -2323,6 +2324,19 @@ dev_inference_model_map = {
         org="LoopTool",
         license="",
         model_handler=LoopToolFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- EnvScaler ---
+    "envscaler-qwen3-8b": ModelConfig(
+        model_name="envscaler-qwen3-8b",
+        display_name="EnvScaler-Qwen3-8B (FC)",
+        url="",
+        org="EnvScaler",
+        license="",
+        model_handler=EnvScalerFCHandler,
         input_price=None,
         output_price=None,
         is_fc_model=True,
