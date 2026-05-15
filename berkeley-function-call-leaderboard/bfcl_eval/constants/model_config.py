@@ -65,6 +65,7 @@ from bfcl_eval.model_handler.dev_inference.astra_fc import (
     AstraFCOpenThinkPrefixFCHandler,
     AstraFCOpenThinkPrefixNoSPFCHandler,
 )
+from bfcl_eval.model_handler.dev_inference.looptool_fc import LoopToolFCHandler
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
 from bfcl_eval.model_handler.local_inference.pelican_vl_fc import PelicanVLFCHandler
@@ -2309,6 +2310,19 @@ dev_inference_model_map = {
         org="Astra",
         license="",
         model_handler=AstraFCOpenThinkPrefixNoSPFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- LoopTool ---
+    "looptool-8b": ModelConfig(
+        model_name="looptool-8b",
+        display_name="LoopTool-8B (FC)",
+        url="",
+        org="LoopTool",
+        license="",
+        model_handler=LoopToolFCHandler,
         input_price=None,
         output_price=None,
         is_fc_model=True,
