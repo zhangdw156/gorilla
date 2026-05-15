@@ -2317,8 +2317,8 @@ dev_inference_model_map = {
         underscore_to_dot=False,
     ),
     # --- LoopTool ---
-    "looptool-8b": ModelConfig(
-        model_name="looptool-8b",
+    "looptool": ModelConfig(
+        model_name="looptool",
         display_name="LoopTool-8B (FC)",
         url="",
         org="LoopTool",
@@ -2330,8 +2330,8 @@ dev_inference_model_map = {
         underscore_to_dot=False,
     ),
     # --- EnvScaler ---
-    "envscaler-qwen3-8b": ModelConfig(
-        model_name="envscaler-qwen3-8b",
+    "envscaler": ModelConfig(
+        model_name="envscaler",
         display_name="EnvScaler-Qwen3-8B (FC)",
         url="",
         org="EnvScaler",
