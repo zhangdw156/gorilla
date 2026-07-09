@@ -68,6 +68,10 @@ from bfcl_eval.model_handler.dev_inference.astra_fc import (
 from bfcl_eval.model_handler.dev_inference.envscaler_fc import EnvScalerFCHandler
 from bfcl_eval.model_handler.dev_inference.looptool_fc import LoopToolFCHandler
 from bfcl_eval.model_handler.dev_inference.toucan_fc import ToucanFCHandler
+from bfcl_eval.model_handler.dev_inference.apigen_mt_qwen3 import APIGenMTQwen3Handler
+from bfcl_eval.model_handler.dev_inference.toolace_qwen3 import ToolACEQwen3Handler
+from bfcl_eval.model_handler.dev_inference.toolmind_qwen3 import ToolMindQwen3Handler
+from bfcl_eval.model_handler.dev_inference.toucan_qwen3 import ToucanQwen3Handler
 from bfcl_eval.model_handler.local_inference.qwen import QwenHandler
 from bfcl_eval.model_handler.local_inference.qwen_fc import QwenFCHandler
 from bfcl_eval.model_handler.local_inference.pelican_vl_fc import PelicanVLFCHandler
@@ -2275,6 +2279,55 @@ dev_inference_model_map = {
         org="Astra",
         license="",
         model_handler=AstraFCOpenThinkPrefixFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    # --- ASTRA external SFT baselines (Qwen3 XML tool-call format) ---
+    "astra-sp-apigen-mt": ModelConfig(
+        model_name="astra-sp-apigen-mt",
+        display_name="ASTRA SP APIGen-MT Qwen3-4B SFT (FC)",
+        url="https://huggingface.co/datasets/Salesforce/APIGen-MT-5k",
+        org="Astra",
+        license="cc-by-nc-4.0",
+        model_handler=APIGenMTQwen3Handler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-sp-toolace": ModelConfig(
+        model_name="astra-sp-toolace",
+        display_name="ASTRA SP ToolACE Qwen3-4B SFT (FC)",
+        url="https://huggingface.co/datasets/Team-ACE/ToolACE",
+        org="Astra",
+        license="apache-2.0",
+        model_handler=ToolACEQwen3Handler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-sp-toolmind": ModelConfig(
+        model_name="astra-sp-toolmind",
+        display_name="ASTRA SP ToolMind Qwen3-4B SFT (FC)",
+        url="https://huggingface.co/datasets/Nanbeige/ToolMind",
+        org="Astra",
+        license="apache-2.0",
+        model_handler=ToolMindQwen3Handler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
+    "astra-sp-toucan": ModelConfig(
+        model_name="astra-sp-toucan",
+        display_name="ASTRA SP Toucan Qwen3-4B SFT (FC)",
+        url="https://huggingface.co/datasets/Agent-Ark/Toucan-1.5M",
+        org="Astra",
+        license="unknown",
+        model_handler=ToucanQwen3Handler,
         input_price=None,
         output_price=None,
         is_fc_model=True,
