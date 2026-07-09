@@ -2285,6 +2285,10 @@ dev_inference_model_map = {
         underscore_to_dot=False,
     ),
     # --- ASTRA external SFT baselines (Qwen3 XML tool-call format) ---
+    # NOTE: These four legacy experiment keys intentionally keep the
+    # ``astra-sp-*`` prefix for downstream config compatibility, but their
+    # handlers subclass the Qwen3 XML tool-call path instead of AstraFCBase.
+    # They should not be interpreted as using the Astra system-prompt handler.
     "astra-sp-apigen-mt": ModelConfig(
         model_name="astra-sp-apigen-mt",
         display_name="ASTRA SP APIGen-MT Qwen3-4B SFT (FC)",
