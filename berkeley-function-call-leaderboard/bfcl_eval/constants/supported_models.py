@@ -188,6 +188,7 @@ SUPPORTED_MODELS = [
     "astra-sp-toolace",
     "astra-sp-toolmind",
     "astra-sp-toucan",
+    "looptool-noprefix",
     "qwen3-4b-think-FC",
     "qwen3-4b-nothink-FC",
     "DM-Cito-32B-v1",

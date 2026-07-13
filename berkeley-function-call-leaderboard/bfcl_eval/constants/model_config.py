@@ -2387,6 +2387,19 @@ dev_inference_model_map = {
         is_fc_model=True,
         underscore_to_dot=False,
     ),
+    # Generic LoopTool system-prompt handler for arbitrary Qwen-compatible models.
+    "looptool-noprefix": ModelConfig(
+        model_name="looptool-noprefix",
+        display_name="LoopTool NoPrefix (FC)",
+        url="",
+        org="LoopTool",
+        license="",
+        model_handler=LoopToolFCHandler,
+        input_price=None,
+        output_price=None,
+        is_fc_model=True,
+        underscore_to_dot=False,
+    ),
     # --- EnvScaler ---
     "envscaler": ModelConfig(
         model_name="envscaler",
